@@ -53,10 +53,10 @@ source ~/.bashrc
     catkin_make
 ```
 
-**2.** Start the Leap control panel in another terminal.
+**2.** (OPTIONAL) To check the LeapControlPanel use the following command:
 
 ```bash
-LeapControlPanel
+LeapControlPanel --showsettings
 ```
 
 **3.** (OPTIONAL) If it gives you an error about the leap daemon not running, stop the LeapControlPanel have a look [here](https://forums.leapmotion.com/t/error-in-leapd-malloc/4271/13) and use the following command:
