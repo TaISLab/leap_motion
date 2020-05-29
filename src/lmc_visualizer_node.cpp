@@ -198,6 +198,15 @@ visualization_msgs::Marker createHandOutline(const leap_motion::Human::ConstPtr 
             line_list.points.push_back(p);
         }
     }
+    geometry_msgs::Point p;
+    p.x = current_hand.arm.elbow.position.x;
+    p.y = current_hand.arm.elbow.position.y;
+    p.z = current_hand.arm.elbow.position.z;
+    line_list.points.push_back(p);
+    p.x = current_hand.arm.wrist.position.x;
+    p.y = current_hand.arm.wrist.position.y;
+    p.z = current_hand.arm.wrist.position.z;
+    line_list.points.push_back(p);
 
     return line_list;
 }

@@ -60,7 +60,7 @@ def make_tf_dict(hand,hand_name):
     # hand_tf=make_kdl_frame(hand.basis,hand.palm_position)
     hand_dict[hand_name]=["hand_ground",hand_tf]
     for finger in hand.fingers:
-        finger_name=hand_name+"_"+finger_names[finger.type()]
+        finger_name=hand_name+"_"+finger_names[finger.type]
         
         prev_bone_name=hand_name
         for num in range(0,4):

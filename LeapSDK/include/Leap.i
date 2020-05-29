@@ -141,6 +141,7 @@
 %constattrib( Leap::Hand, float, pinchStrength );
 %constattrib( Leap::Hand, float, palmWidth );
 %leapattrib( Leap::Hand, Vector, stabilizedPalmPosition )
+%leapattrib( Leap::Hand, Vector, elbowPosition )
 %leapattrib( Leap::Hand, Vector, wristPosition )
 %constattrib( Leap::Hand, float, timeVisible );
 %constattrib( Leap::Hand, float, confidence );
