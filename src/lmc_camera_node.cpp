@@ -1,122 +1,79 @@
-#include <string.h>
-#include <boost/shared_ptr.hpp>
-#include <sstream>
+#include <leap_motion/lmc_camera_node.hpp>
 
-#include "ros/ros.h"
-#include "sensor_msgs/Image.h"
-#include "sensor_msgs/CameraInfo.h"
-#include "camera_info_manager/camera_info_manager.h"
-#include "rospack/rospack.h"
-#include "Leap.h"
-
-
-#define targetWidth 500
-#define targetHeight 500
-#define cutWidth 280
-#define cutHeight 220
-#define startX 110
-#define startY 140
-
-using namespace Leap;
-using namespace std;
-
-class CameraListener : public Listener {
-  public:
-    boost::shared_ptr <ros::NodeHandle> _left_node;
-    boost::shared_ptr <ros::NodeHandle> _right_node;
-
-    ros::Publisher _pub_image_left;
-    ros::Publisher _pub_info_left;
-    ros::Publisher _pub_image_right;
-    ros::Publisher _pub_info_right;
-    camera_info_manager::CameraInfoManager* info_mgr_right;
-    camera_info_manager::CameraInfoManager* info_mgr_left;
-    
-    bool enable_controller_info = false;
-
-    unsigned int seq;
-    virtual void onInit(const Controller&);
-    virtual void onConnect(const Controller&);
-    virtual void onDisconnect(const Controller&);
-    virtual void onExit(const Controller&);
-    virtual void onFrame(const Controller&);
-    virtual void onFocusGained(const Controller&);
-    virtual void onFocusLost(const Controller&);
-    virtual void onDeviceChange(const Controller&);
-    virtual void onServiceConnect(const Controller&);
-    virtual void onServiceDisconnect(const Controller&);  
-};
-
+CameraListener::CameraListener(): Node("lmc_camera_node")
+    {
+        //nothing
+    }
 
 void CameraListener::onInit(const Controller& controller){
-
-    _left_node = boost::make_shared<ros::NodeHandle>("left");
-    _right_node = boost::make_shared<ros::NodeHandle>("right");
-
-    _pub_image_left = _left_node->advertise<sensor_msgs::Image>("image_raw", 1);
-    _pub_image_right = _right_node->advertise<sensor_msgs::Image>("image_raw", 1);
-
-    _pub_info_left = _left_node->advertise<sensor_msgs::CameraInfo>("camera_info", 1);
-    _pub_info_right = _right_node->advertise<sensor_msgs::CameraInfo>("camera_info", 1);
-    
-    seq = 0;
-    rospack::Rospack rp;
     std::string path;
     std::string default_l_info_filename;
     std::string default_r_info_filename;
-    std::vector<std::string> search_path;
-
-    rp.getSearchPathFromEnv(search_path);
-    rp.crawl(search_path, 1);
-
-    if ( rp.find("leap_motion",path) == true) 
-    {
-        default_l_info_filename = path + std::string("/config/camera_info/leap_cal_left.yml");
-        default_r_info_filename = path + std::string("/config/camera_info/leap_cal_right.yml");
-    }
-    else
-    {
-        default_l_info_filename = "";
-        default_r_info_filename = "";
-    }
-
-    ros::NodeHandle local_nh("~");
     std::string l_info_filename;
     std::string r_info_filename;
 
-    local_nh.param("template_filename_left", l_info_filename, default_l_info_filename);
-    local_nh.param("template_filename_right", r_info_filename, default_r_info_filename);
+    // _pub_image_left = this->create_publisher<sensor_msgs::msg::Image>("image_raw_left", 1);
+    // _pub_image_right = this->create_publisher<sensor_msgs::msg::Image>("image_raw_right", 1);
+
+    // _pub_info_left = this->create_publisher<sensor_msgs::msg::CameraInfo>("camera_info_left", 1);
+    // _pub_info_right = this->create_publisher<sensor_msgs::msg::CameraInfo>("camera_info_right", 1);
+
+    _left_image_pub_ = image_transport::create_camera_publisher(this, "left/image_rect", rclcpp::QoS{100}.get_rmw_qos_profile());
+    _right_image_pub_ = image_transport::create_camera_publisher(this, "right/image_rect", rclcpp::QoS{100}.get_rmw_qos_profile());
+
+    seq = 0;
+
+    // Get default config file
+	// ament may throw PackageNotFoundError exception
+	path = ament_index_cpp::get_package_share_directory("leap_motion");
+        
+    default_l_info_filename = path + std::string("/config/camera_info/leap_cal_left.yml");
+    default_r_info_filename = path + std::string("/config/camera_info/leap_cal_right.yml");
+    
+    // See if there is a proper param for it
+    this->declare_parameter<std::string>("template_filename_left", default_l_info_filename);
+    this->declare_parameter<std::string>("template_filename_right", default_r_info_filename);
+
+    this->get_parameter("template_filename_left", l_info_filename);
+    this->get_parameter("template_filename_right", r_info_filename);  
     
     l_info_filename = std::string("file://") + l_info_filename;
     r_info_filename = std::string("file://") + r_info_filename;
     
-    info_mgr_left = new camera_info_manager::CameraInfoManager(*_left_node, "left", l_info_filename);
-    info_mgr_right = new camera_info_manager::CameraInfoManager(*_right_node, "right", r_info_filename);
+    info_mgr_left.reset(new camera_info_manager::CameraInfoManager(this, "left", l_info_filename));
+    info_mgr_right.reset(new camera_info_manager::CameraInfoManager(this, "right", r_info_filename));
 
-    if(CameraListener::enable_controller_info)
-    {  
-        ROS_INFO("CameraListener initialized");
+    if(CameraListener::enable_controller_info){  
+        RCLCPP_INFO(this->get_logger(), "CameraListener initialized");
+    }
+
+    // check for default camera info
+    if (!info_mgr_left->isCalibrated()) {
+        RCLCPP_WARN(this->get_logger(), "CameraListener left camera not calibrated");
+    }
+    if (!info_mgr_right->isCalibrated()) {
+        RCLCPP_WARN(this->get_logger(), "CameraListener right camera not calibrated");
     }
 }
 
 void CameraListener::onConnect(const Controller& controller) {
     if(CameraListener::enable_controller_info)
     {  
-        ROS_INFO("CameraListener connected");
+        RCLCPP_INFO(this->get_logger(), "CameraListener connected");
     }
 }
 
 void CameraListener::onDisconnect(const Controller& controller) {
     if(CameraListener::enable_controller_info)
     {
-        ROS_INFO("CameraListener disconnected");
+        RCLCPP_INFO(this->get_logger(), "CameraListener disconnected");
     }
 }
 
 void CameraListener::onExit(const Controller& controller) {
     if(CameraListener::enable_controller_info)
     {  
-        ROS_INFO("CameraListener exited");
+        RCLCPP_INFO(this->get_logger(), "CameraListener exited");
     }
 }
 
@@ -126,10 +83,11 @@ void CameraListener::onFrame(const Controller& controller) {
   // The list of IR images from the Leap Motion cameras. 
   ImageList images = frame.images();
   // http://docs.ros.org/api/sensor_msgs/html/msg/Image.html
-  sensor_msgs::Image image_msg;
+  sensor_msgs::msg::Image image_msg;
 
-  image_msg.header.seq = seq++;
-  image_msg.header.stamp = ros::Time::now();
+  // no need for seq field
+  //image_msg.header.seq = seq++;
+  image_msg.header.stamp = this->get_clock()->now();
   // Encoding of pixels -- channel meaning, ordering, size
   // taken from the list of strings in include/sensor_msgs/image_encodings.h
   image_msg.encoding = "mono8";
@@ -172,26 +130,34 @@ void CameraListener::onFrame(const Controller& controller) {
 
     if(camera_num == 0)
     {
-      sensor_msgs::CameraInfoPtr info_msg(new sensor_msgs::CameraInfo(info_mgr_left -> getCameraInfo() ) );
+      //sensor_msgs::msg::CameraInfoPtr info_msg(new sensor_msgs::CameraInfo(info_mgr_left -> getCameraInfo() ) );
       
-      image_msg.header.frame_id = info_msg->header.frame_id ="leap_pointcloud";
-      info_msg->width = image_msg.width;
-      info_msg->height = image_msg.height;
-      info_msg->header.stamp = image_msg.header.stamp;
-      info_msg->header.seq = image_msg.header.seq;
-      _pub_image_left.publish(image_msg);
-      _pub_info_left.publish(*info_msg);
+      image_msg.header.frame_id = "leap_pointcloud"; // = info_msg->header.frame_id 
+      // info_msg->width = image_msg.width;
+      // info_msg->height = image_msg.height;
+      // info_msg->header.stamp = image_msg.header.stamp;
+      // info_msg->header.seq = image_msg.header.seq;
+      // _pub_image_left.publish(image_msg);
+      // _pub_info_left.publish(*info_msg);
+      auto ci = std::make_unique<sensor_msgs::msg::CameraInfo>(info_mgr_left->getCameraInfo());
+      ci->header =  image_msg.header;
+      _left_image_pub_.publish(image_msg, *ci);
+
     }
     else
     {
-      sensor_msgs::CameraInfoPtr info_msg(new sensor_msgs::CameraInfo(info_mgr_right->getCameraInfo()));
-      image_msg.header.frame_id = info_msg->header.frame_id = "lmc_";
-      info_msg->width = image_msg.width;
-      info_msg->height = image_msg.height;
-      info_msg->header.stamp = image_msg.header.stamp;
-      info_msg->header.seq = image_msg.header.seq;
-      _pub_image_right.publish(image_msg);
-      _pub_info_right.publish(*info_msg);
+      //sensor_msgs::msg::CameraInfoPtr info_msg(new sensor_msgs::CameraInfo(info_mgr_right->getCameraInfo()));
+      image_msg.header.frame_id  = "lmc_"; // = info_msg->header.frame_id
+      // info_msg->width = image_msg.width;
+      // info_msg->height = image_msg.height;
+      // info_msg->header.stamp = image_msg.header.stamp;
+      //info_msg->header.seq = image_msg.header.seq;
+      //_pub_image_right.publish(image_msg);
+      //_pub_info_right.publish(*info_msg);
+      auto ci = std::make_unique<sensor_msgs::msg::CameraInfo>(info_mgr_right->getCameraInfo());
+      ci->header =  image_msg.header;
+      _right_image_pub_.publish(image_msg, *ci);
+
     }
   }
 }
@@ -199,25 +165,25 @@ void CameraListener::onFrame(const Controller& controller) {
 void CameraListener::onFocusGained(const Controller& controller) {
     if(CameraListener::enable_controller_info)
     {  
-        ROS_INFO("CameraListener gained focus");
+        RCLCPP_INFO(this->get_logger(), "CameraListener gained focus");
     }
 }
 
 void CameraListener::onFocusLost(const Controller& controller) {
     if(CameraListener::enable_controller_info)
     {  
-        ROS_INFO("CameraListener lost focus");
+        RCLCPP_INFO(this->get_logger(), "CameraListener lost focus");
     }
 }
 
 void CameraListener::onDeviceChange(const Controller& controller) {
     if(CameraListener::enable_controller_info)
     {  
-        ROS_INFO("CameraListener device changed");
+        RCLCPP_INFO(this->get_logger(), "CameraListener device changed");
         const DeviceList devices = controller.devices();
         for (int i = 0; i < devices.count(); ++i) {
-            ROS_INFO( "id: %s", devices[i].toString().c_str() );
-            ROS_INFO("  isStreaming: %s", (devices[i].isStreaming() ? "true" : "false") );
+            RCLCPP_INFO(this->get_logger(),  "id: %s", devices[i].toString().c_str() );
+            RCLCPP_INFO(this->get_logger(), "  isStreaming: %s", (devices[i].isStreaming() ? "true" : "false") );
         }
     }
 }
@@ -225,28 +191,30 @@ void CameraListener::onDeviceChange(const Controller& controller) {
 void CameraListener::onServiceConnect(const Controller& controller) {
     if(CameraListener::enable_controller_info)
     {
-        ROS_INFO("CameraListener service connected");
+        RCLCPP_INFO(this->get_logger(), "CameraListener service connected");
     }
 }
 
 void CameraListener::onServiceDisconnect(const Controller& controller) {
     if(CameraListener::enable_controller_info)
     {
-        ROS_INFO("CameraListener service disconnected");
+        RCLCPP_INFO(this->get_logger(), "CameraListener service disconnected");
     }
 }
 
 int main(int argc, char** argv) {
 
-  ros::init(argc, argv, "leap_motion");
-  
-  CameraListener listener;
+  rclcpp::init(argc, argv);
+
+  auto listener_ptr = std::make_shared<CameraListener>();
+
   Controller controller;
-  controller.addListener(listener);
+  controller.addListener(*listener_ptr);
   controller.setPolicyFlags(static_cast<Leap::Controller::PolicyFlag> (Leap::Controller::POLICY_IMAGES));
   
-  ros::spin();
-  controller.removeListener(listener);
+  rclcpp::spin(listener_ptr);
+  controller.removeListener(*listener_ptr);
+  rclcpp::shutdown();
 
   return 0;
 }
