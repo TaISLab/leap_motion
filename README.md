@@ -118,3 +118,6 @@ ros2 launch leap_motion camera.launch.py
 ```
 
 **4.** You can use Rviz config file `leap_camera.rviz` to see the output
+
+### Foreword
+Check Jeff Gensler's [ROS2 Image Pipeline Tutorial](https://jeffzzq.medium.com/ros2-image-pipeline-tutorial-3b18903e7329) to learn a bit more about the disparity images, great reading!
