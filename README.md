@@ -1,80 +1,120 @@
-# ROS LEAP MOTION
+# ROS2 LEAP MOTION DRIVER
 
-ROS driver for the Leap Motion Controller
-
-[![Build Status](https://travis-ci.org/ros-drivers/leap_motion.svg?branch=hydro)](https://travis-ci.org/ros-drivers/leap_motion)
+(Partial) ROS2 driver for the Leap Motion Controller
 
 ## REQUIREMENTS
 
-You should have [ROS Kinetic](http://wiki.ros.org/kinetic) or a [newer version](http://wiki.ros.org/Distributions) installed on your device and the [Leap Motion SDK](https://developer.leapmotion.com/sdk/v2) for Linux.
+You should have [ROS2 Foxy](https://docs.ros.org/en/foxy/Installation.html) installed on your device and the [Leap Motion SDK](https://developer.leapmotion.com/tracking-software-download) for Linux.
 
 ## FEATURES
 
-Currently, this ROS package supports one person (left and right arm), publishing raw camera images from the controller, basic visualization using RViz and a pointcloud2 generated from [stereo_image_proc](http://wiki.ros.org/stereo_image_proc) node.
+Currently, this ROS2 package supports publishing raw camera images from the controller, basic visualization using RViz and a pointcloud2 generated from [stereo_image_proc](http://wiki.ros.org/stereo_image_proc) node. Hand tracking features are still not ported. 
 
-There is also a filter node implementing a 2nd-order Butterworth lowpass filter that is used to filter the hand x, y, z coordinates coming from the Leap Controller via Human.msg. For more information refer to Julius O. Smith III, [Intro to Digital Filters with Audio Applications](https://ccrma.stanford.edu/~jos/filters/).
 
 ## INSTALLATION
 
-### Python API installation
+**1.** Download the SDK from [Leap Motion](https://developer.leapmotion.com/tracking-software-download).
 
-**1.** If you wish to use the old deprecated Python API you need to append the location of your LeapSDK to your environment variables. This step differs depending on where you saved the SDK. The LeapSDK folder should contain the following [files](https://developer-archive.leapmotion.com/documentation/v2/python/devguide/Project_Setup.html): lib/Leap.py, lib/x86/LeapPython.so, lib/x86/libLeap.so, lib/x64/LeapPython.so, lib/x64/libLeap.so lib/LeapPython.so, lib/libLeap.dylib.
-
-Example:
-
+**2.** Uncompress the tar file and install the deb file inside it.
 ```bash
-# 64-bit operating system
-export PYTHONPATH=$PYTHONPATH:$HOME/LeapSDK/lib:$HOME/LeapSDK/lib/x64
-
-# 32-bit operating system
-export PYTHONPATH=$PYTHONPATH:$HOME/LeapSDK/lib:$HOME/LeapSDK/lib/x86
+    gunzip -c Leap_Motion_SDK_Linux_2.3.1.tgz | tar xvf -
+    cd LeapDeveloperKit_2.3.1+31549_linux/
+    sudo dpkg -i Leap-2.3.1+31549-x64.deb  # or Leap-2.3.1+31549-x86.deb
 ```
 
-**2.** (OPTIONAL) You can edit your ~/.bashrc file to remove the need to export the location of your LeapSDK every time you open a new shell. Just append the LeapSDK location to the end of the PYTHONPATH.
+**3.** Colcon seems to have problems finding `libLeap.so`. This is the quickiest (and dirtiest) way to fix it: copying it.
+```bash
+    sudo cp LeapSDK/lib/x64/libLeap.so /usr/lib
+    # or sudo cp LeapSDK/lib/x86/libLeap.so /usr/lib
+```
+
+**4.** Clone the repo to your workspace.
 
 ```bash
-# 64-bit operating system
-echo "export PYTHONPATH=$PYTHONPATH:$HOME/LeapSDK/lib:$HOME/LeapSDK/lib/x64" >> ~/.bashrc
-source ~/.bashrc
+    cd ~/catkin_ws/src
+    git clone https://github.com/TaISLab/leap_motion.git
+```
 
-# 32-bit operating system
-echo "export PYTHONPATH=$PYTHONPATH:$HOME/LeapSDK/lib:$HOME/LeapSDK/lib/x86" >> ~/.bashrc
-source ~/.bashrc
+**5.** Copy the Leap Config file from the repo to the system-wide location:
+
+```bash
+    sudo cp leap_motion/config/leapd.conf /var/.Leap\ Motion/config.json
+```
+
+**6.** Configure Leap Motion systemd service
+
+- Create a service file
+
+```bash
+   cd /lib/systemd/system
+   sudo nano leapd.service
+```
+
+- The file should be like this:
+```bash
+[Unit]
+
+Description=LeapMotion Daemon
+
+After=syslog.target
+
+[Service]
+
+Type=simple
+
+ExecStart=/usr/sbin/leapd --run --config=/var/.Leap\ Motion/config.json
+
+[Install]
+
+WantedBy=multi-user.target
+``` 
+
+- Link it:
+```bash
+   sudo ln -s /lib/systemd/system/leapd.service/etc/systemd/system/leapd.service
+   systemctl daemon-reload
+```
+
+- Now this should start the service:
+```bash
+   sudo service leapd start
+```
+
+- You can check the status with:
+```bash
+   sudo service leapd status
+```
+
+- And see te output with this command:
+```bash
+   Visualizer
+```
+
+**7.** Compile the ros2 package:
+
+```bash
+    cd ~/catkin_ws/
+    colcon build --symlink-install --packages-select leap_motion
 ```
 
 ### Usage
 
-**1.** Just go to the src folder of your catkin workspace.
-
-```bash
-    cd ~/catkin_ws/src
-    git clone https://github.com/ros-drivers/leap_motion.git
-    cd ~/catkin_ws
-    catkin_make
-```
-
-**2.** Start the Leap control panel in another terminal.
-
-```bash
-LeapControlPanel
-```
-
-**3.** (OPTIONAL) If it gives you an error about the leap daemon not running, stop the LeapControlPanel have a look [here](https://forums.leapmotion.com/t/error-in-leapd-malloc/4271/13) and use the following command:
+**1.** (OPTIONAL) If it gives you an error about the leap daemon not running, stop the LeapControlPanel have a look [here](https://forums.leapmotion.com/t/error-in-leapd-malloc/4271/13) and use the following command:
 
 ```bash
 sudo service leapd restart
 ```
 
-**4.** Source your current catkin workspace.
+**2.** Source your current catkin workspace.
 
 ```bash
-source ~/catkin_ws/devel/setup.bash
+source ~/catkin_ws/install/setup.bash
 ```
 
-**5.** Launch the demo.launch file to see if you have set everything up correctly. If you wish to enable a lowpass filter change "enable_filter" to true in filter_params.yaml file.
+**3.** Launch `camera.launch.py` file. 
 
 ```bash
-roslaunch leap_motion demo.launch
+ros2 launch leap_motion camera.launch.py
 ```
 
-**6.** You are done! You should see an RViz window opening up displaying the detected hands from the controller.
+**4.** You can use Rviz config file `leap_camera.rviz` to see the output

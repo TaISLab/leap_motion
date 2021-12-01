@@ -132,7 +132,7 @@ void CameraListener::onFrame(const Controller& controller) {
     {
       //sensor_msgs::msg::CameraInfoPtr info_msg(new sensor_msgs::CameraInfo(info_mgr_left -> getCameraInfo() ) );
       
-      image_msg.header.frame_id = "leap_pointcloud"; // = info_msg->header.frame_id 
+      image_msg.header.frame_id = "leap_camera_left"; // = info_msg->header.frame_id 
       // info_msg->width = image_msg.width;
       // info_msg->height = image_msg.height;
       // info_msg->header.stamp = image_msg.header.stamp;
@@ -147,7 +147,7 @@ void CameraListener::onFrame(const Controller& controller) {
     else
     {
       //sensor_msgs::msg::CameraInfoPtr info_msg(new sensor_msgs::CameraInfo(info_mgr_right->getCameraInfo()));
-      image_msg.header.frame_id  = "lmc_"; // = info_msg->header.frame_id
+      image_msg.header.frame_id  = "leap_camera_right"; // = info_msg->header.frame_id
       // info_msg->width = image_msg.width;
       // info_msg->height = image_msg.height;
       // info_msg->header.stamp = image_msg.header.stamp;

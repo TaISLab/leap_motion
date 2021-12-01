@@ -54,14 +54,12 @@ def generate_launch_description():
     ])
     ld.add_action(stereo_image_include)
 
-    # tf to orientate it the right way
-    # TODO: this may be better to be in a robot description ...
+    # TODO: this is orientative ...
     transform_node = Node(package = "tf2_ros", 
                 executable = "static_transform_publisher",
                 name="link2_broadcaster", 
-                arguments = ["0 0 0 0 0 1 0 /world /leap_pointcloud 100".split(' ')]
+                arguments = ['0.03', '0', '0', '0', '0', '0', 'leap_camera_left', 'leap_camera_right']
           )
     ld.add_action(transform_node)
-
 
     return ld
