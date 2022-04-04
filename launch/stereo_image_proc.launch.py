@@ -50,12 +50,12 @@ def generate_launch_description():
             description='Use the RMW QoS settings for the image and camera info subscriptions.'
         ),
         ComposableNodeContainer(
-            package='rclcpp_components', node_executable='component_container',
-            node_name='stereo_image_proc_container', node_namespace='',
+            package='rclcpp_components', executable='component_container',
+            name='stereo_image_proc_container', namespace='',
             composable_node_descriptions=[
                 ComposableNode(
                     package='stereo_image_proc',
-                    node_plugin='stereo_image_proc::DisparityNode',
+                    plugin='stereo_image_proc::DisparityNode',
                     parameters=[{
                         'approximate_sync': LaunchConfiguration('approximate_sync'),
                         'use_system_default_qos': LaunchConfiguration('use_system_default_qos'),
@@ -63,7 +63,7 @@ def generate_launch_description():
                 ),
                 ComposableNode(
                     package='stereo_image_proc',
-                    node_plugin='stereo_image_proc::PointCloudNode',
+                    plugin='stereo_image_proc::PointCloudNode',
                     parameters=[{
                         'approximate_sync': LaunchConfiguration('approximate_sync'),
                         'use_system_default_qos': LaunchConfiguration('use_system_default_qos'),

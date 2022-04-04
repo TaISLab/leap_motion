@@ -1,0 +1,11 @@
+/**:
+    ros__parameters:
+      video_device: "/dev/video4"
+      framerate: 30.0
+      io_method: "mmap"
+      frame_id: "camera_left"
+      pixel_format: "yuyv"
+      image_width: 640
+      image_height: 480
+      camera_name: "left_usb_camera"
+      camera_info_url: "package://leap_motion/config/camera_info/usb_cal_left.yml"
